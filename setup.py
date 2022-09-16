@@ -11,7 +11,7 @@ setup(
     description='iPython %timeit magic command in normal Python files',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url=r'https://github.com/Hakonmh/timeit_magic',
+    url=r'https://github.com/hakonmh/timeit-magic',
     author='Håkon Magne Holmen',
     author_email='haakonholmen@hotmail.com',
     license='MIT',

@@ -42,4 +42,4 @@ For more usage information, see the function docstrings and the [`timeit` docume
 
 ## Installation
 
-Timeit-magic can be installed by using `$ pip install timeit-magic`
+Timeit-magic can be installed from [PyPI](https://pypi.org/project/timeit-magic/) by using `$ pip install timeit-magic`
