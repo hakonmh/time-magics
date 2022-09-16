@@ -27,5 +27,5 @@ setup(
         'Programming Language :: Python :: 3.11',
     ],
     python_requires='>=3.5',
-    y_modules=['timeit_magic'],
+    py_modules=['timeit_magic'],
 )
