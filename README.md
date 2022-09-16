@@ -17,6 +17,7 @@ timeit("foo(100_000_000)", number=10, repeat=1, globals=globals())
 ```
 
 Timeit-magic allows you to time code in a `.py` file with the same output and behavior as the [`%timeit`](https://docs.python.org/3/library/timeit.html) command in iPython and Jupyter Notebook.
+
 It also provides another function, `time_it`, which allows you to time a function by decorating it:
 
 ```python
@@ -36,8 +37,9 @@ print(total_time)
 ```
 
 Both functions accepts the optional arguments `repeat` and `number`, which does the same as `-r` and `-n` in `%timeit`.
+
 For more usage information, see the function docstrings and the `timeit` [documentation](https://docs.python.org/3/library/timeit).
 
 ## Installation
 
-Timeit-magic can be installed by using `$ pip install timeit-magic`.
+Timeit-magic can be installed by using `$ pip install timeit-magic`
