@@ -7,7 +7,7 @@ with open(os.path.join(current_folder, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='timeit-magic',
-    version='0.2.0',
+    version='0.2.1',
     description='iPython %timeit magic command in normal Python files',
     long_description=long_description,
     long_description_content_type='text/markdown',
