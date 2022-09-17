@@ -92,7 +92,7 @@ def _autorange(timer, max_time, repeat):
         (time_taken, number)
     """
     estimate = timer.repeat(repeat, 1)
-    number = round(max_time / sum(estimate))
+    number = max(round(max_time / sum(estimate)), 1)
     if number > 1:
         number = _find_number(number)
         time_taken = timer.repeat(repeat, number)
