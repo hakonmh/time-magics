@@ -1,6 +1,36 @@
 import statistics
 from math import log10, floor, ceil
 from timeit import Timer
+from time import perf_counter
+try:
+    import resource
+except ImportError:
+    resource = None
+
+
+def time(stmt="pass", globals={}):
+    """Times a function and prints the output like '%time' in iPython.
+
+    time() also returns the 'stmt' return value.
+
+    Parameters
+    ----------
+    stmt : str
+        The code you want to time.
+    globals : dict, optional
+        Specifies a namespace in which to execute the code.
+    """
+    result, timings = _time(stmt, globals)
+    ts = []
+    for timing in timings:
+        timing, unit = _format_unit(timing)
+        timing = _round_number(timing)
+        ts.append((timing, unit))
+
+    print(f"CPU times: user {ts[0][0]} {ts[0][1]}, sys: {ts[1][0]} {ts[1][1]},"
+          f" total: {ts[2][0]} {ts[2][1]} \nWall time: {ts[3][0]} {ts[3][1]}")
+
+    return result
 
 
 def time_it(func, repeat=7, number=None, max_time=20):
@@ -59,14 +89,50 @@ def timeit(stmt="pass", repeat=7, number=None, max_time=20, **kwargs):
     avg, std = _get_time_stats(time_taken, number)
 
     avg, avg_unit = _format_unit(avg)
-    avg = _format_number(avg)
+    avg = _round_number(avg)
     std, std_unit = _format_unit(std)
-    std = _format_number(std)
+    std = _round_number(std)
 
     output = f"{avg} {avg_unit} ± {std} {std_unit} per loop " \
              f"(mean ± std. dev. of {repeat} runs, {number} loops each)"
     print(output)
     return sum(time_taken)
+
+
+def _time(stmt, globals):
+    """Measures the cpu and wall time of a function.
+
+    Returns
+    -------
+    tuple
+        ('stmt' result, (cpu_user, cpu_sys, cpu_total, wall_time))
+    """
+    start_wall_time = perf_counter()
+    start_cpu_time = _clock()
+
+    result = eval(stmt, globals)
+
+    end_cpu_time = _clock()
+    end_wall_time = perf_counter()
+
+    cpu_user = (end_cpu_time[0] - start_cpu_time[0])
+    cpu_sys = (end_cpu_time[1] - start_cpu_time[1])
+    cpu_total = (cpu_sys + cpu_user)
+    wall_time = end_wall_time - start_wall_time
+
+    timings = (cpu_user, cpu_sys, cpu_total, wall_time)
+    return result, timings
+
+
+def _clock():
+    """Fetches CPU times in the format (time_user, time_sys)"""
+    if resource is not None and hasattr(resource, "getrusage"):
+        # Some systems don't have getrusage
+        return resource.getrusage(resource.RUSAGE_SELF)[:2]
+    else:
+        # Under windows, system CPU time can't be measured.
+        # This just returns perf_counter() and zero.
+        return (perf_counter(), 0.0)
 
 
 def _timeit(stmt, repeat, number, max_time, **kwargs):
@@ -161,7 +227,8 @@ def _format_unit(number):
     return number, unit
 
 
-def _format_number(number):
+def _round_number(number):
+    """Rounds the number so its of proper length"""
     try:
         round_to = 3 - ceil(log10(number))
     except ValueError:
