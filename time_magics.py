@@ -47,7 +47,7 @@ def time_it(func, repeat=7, number=None, max_time=20):
         How many times to execute func, by default None
     max_time : int, optional
         Calls timeit with the number of loops so that total time >= max_time,
-        by default 20 seconds. Will not be used if 'number' is provided
+        by default 5 seconds. max_time does nothing when number is provided
     Returns
     -------
     float
@@ -63,7 +63,7 @@ def time_it(func, repeat=7, number=None, max_time=20):
     return timed
 
 
-def timeit(stmt="pass", repeat=7, number=None, max_time=20, **kwargs):
+def timeit(stmt="pass", repeat=7, number=None, max_time=5, **kwargs):
     """Times a function and prints the output like '%timeit' in iPython.
 
     Parameters
@@ -76,7 +76,7 @@ def timeit(stmt="pass", repeat=7, number=None, max_time=20, **kwargs):
         How many times to execute stmt, by default None
     max_time : int, optional
         Calls timeit with the number of loops so that total time >= max_time,
-        by default 20 seconds. Will not be used if 'number' is provided
+        by default 5 seconds. max_time does nothing when number is provided
     **kwargs : optional
         Keyword arguments passed to timeit.Timer, for example 'setup' and
         'globals'
@@ -127,7 +127,7 @@ def _time(stmt, globals):
 def _clock():
     """Fetches CPU times in the format (time_user, time_sys)"""
     if resource is not None and hasattr(resource, "getrusage"):
-        # Some systems don't have getrusage
+        # Some systems (like windows) don't have getrusage
         return resource.getrusage(resource.RUSAGE_SELF)[:2]
     else:
         # Under windows, system CPU time can't be measured.
