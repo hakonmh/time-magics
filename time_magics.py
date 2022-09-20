@@ -21,7 +21,7 @@ def time_(func):
     def timed(*args, **kwargs):
         nonlocal func
         runtime = time('func(*args, **kwargs)',
-                       globals={**globals(), **locals()}
+                       globals=locals()
                        )
         return runtime
 
@@ -78,7 +78,7 @@ def timeit_(func, repeat=7, number=None, max_time=20):
         nonlocal func
         runtime = timeit('func(*args, **kwargs)',
                          repeat, number, max_time,
-                         globals={**globals(), **locals()},
+                         globals=locals(),
                          )
         return runtime
     return timed
