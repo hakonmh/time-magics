@@ -53,7 +53,7 @@ def time(stmt="pass", globals={}):
     return result
 
 
-def timeit_(func, repeat=7, number=None, max_time=20):
+def timeit_(func, repeat=7, number=None, max_time=5):
     """A decorator version of time_magics.timeit().
 
     Use this as a decorator to time a function and print the output
