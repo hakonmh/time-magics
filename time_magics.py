@@ -131,7 +131,7 @@ def _time(stmt, globals):
     start_wall_time = perf_counter()
     start_cpu_time = _clock()
 
-    result = eval(stmt, globals)
+    result = exec(stmt, globals)
 
     end_cpu_time = _clock()
     end_wall_time = perf_counter()
