@@ -8,6 +8,26 @@ except ImportError:
     resource = None
 
 
+def time_(func):
+    """A decorator version of time_magics.time().
+
+    Use this as a decorator to time a function and print the output
+    like the '%time' magic command in iPython
+
+    Returns
+    -------
+    Returns the 'func' return value.
+    """
+    def timed(*args, **kwargs):
+        nonlocal func
+        runtime = time('func(*args, **kwargs)',
+                       globals={**globals(), **locals()}
+                       )
+        return runtime
+
+    return timed
+
+
 def time(stmt="pass", globals={}):
     """Times a function and prints the output like '%time' in iPython.
 
@@ -34,7 +54,7 @@ def time(stmt="pass", globals={}):
 
 
 def time_it(func, repeat=7, number=None, max_time=20):
-    """A decorator version of timeit_magic.timeit().
+    """A decorator version of time_magics.timeit().
 
     Use this as a decorator to time a function and print the output
     like the '%timeit' magic command in iPython
@@ -48,6 +68,7 @@ def time_it(func, repeat=7, number=None, max_time=20):
     max_time : int, optional
         Calls timeit with the number of loops so that total time >= max_time,
         by default 5 seconds. max_time does nothing when number is provided
+
     Returns
     -------
     float
