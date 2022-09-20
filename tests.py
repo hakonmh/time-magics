@@ -62,14 +62,14 @@ def test_timeit():
         print('------')
 
 
-def test_time_it():
-    """Tests the time_it() decorator against the %timeit magic command"""
+def test_timeit_():
+    """Tests the timeit_() decorator against the %timeit magic command"""
     # Setup Test
     N = 100
     ipshell = _setup_ipython()
     # Test
     ipshell.run_line_magic("timeit", f"foo({N})")
-    _foo = tm.time_it(foo, max_time=5)
+    _foo = tm.timeit_(foo, max_time=5)
     _foo(N)
 
 
@@ -80,4 +80,4 @@ if __name__ == "__main__":
     print()
     test_timeit()
     print()
-    test_time_it()
+    test_timeit_()
