@@ -1,11 +1,5 @@
-import statistics
-from math import log10, floor, ceil
-from timeit import Timer
-from time import perf_counter
-try:
-    import resource
-except ImportError:
-    resource = None
+from IPython.terminal.embed import InteractiveShellEmbed
+from IPython.core.magics.execution import ExecutionMagics
 
 
 def time_(func):
@@ -16,44 +10,52 @@ def time_(func):
 
     Returns
     -------
-    Returns the 'func' return value.
+    obj
+        Returns the func return value.
     """
     def timed(*args, **kwargs):
         nonlocal func
-        runtime = time('func(*args, **kwargs)',
-                       globals=locals()
-                       )
-        return runtime
+        result = time('func(*args, **kwargs)', ns=locals())
+        return result
 
     return timed
 
 
-def time(stmt="pass", globals={}):
+def time(stmt, ns={}):
     """Times a function and prints the output like '%time' in iPython.
-
-    time() also returns the 'stmt' return value.
 
     Parameters
     ----------
     stmt : str
         The code you want to time.
-    globals : dict, optional
+    ns : dict, optional
         Specifies a namespace in which to execute the code.
+    Returns
+    -------
+    obj
+        The stmt return value. Note that multi-line statements will not return
+        anything.
+    Notes
+    -----
+    It is advisable to pass stmt as a raw string if it contains strings with
+    newline characters. For example:
+
+
+    This function, unlike time_magics.timeit(), doesn't use the statement in
+    the first line as setup code when running multiple lines.
+    >>> tm.time("'This \n will \n fail \n to \n run'")
+    SyntaxError: EOL while scanning string literal (<unknown>, line 1
+
+    >>> tm.time(r"'This \n will \n run \n as \n expected'")
+    CPU times: user 2 µs, sys: 0 ns, total: 2 µs
+    Wall time: 1.91 µs
     """
-    result, timings = _time(stmt, globals)
-    ts = []
-    for timing in timings:
-        timing, unit = _format_unit(timing)
-        timing = _round_number(timing)
-        ts.append((timing, unit))
-
-    print(f"CPU times: user {ts[0][0]} {ts[0][1]}, sys: {ts[1][0]} {ts[1][1]},"
-          f" total: {ts[2][0]} {ts[2][1]} \nWall time: {ts[3][0]} {ts[3][1]}")
-
+    magics = _setup_shell(ns)
+    result = magics.time(cell=stmt)
     return result
 
 
-def timeit_(func, repeat=7, number=None, max_time=5):
+def timeit_(func, repeat=7, number=None, precision=3, quiet=False):
     """A decorator version of time_magics.timeit().
 
     Use this as a decorator to time a function and print the output
@@ -61,202 +63,111 @@ def timeit_(func, repeat=7, number=None, max_time=5):
 
     Parameters
     ----------
+    stmt : str
+        The code you want to time.
     repeat : int, optional
-        How many times to repeat the timer, by default 7
+        Number of repeats, each consisting of 'number' loops, and take the
+        best result.
     number : int, optional
-        How many times to execute func, by default None
-    max_time : int, optional
-        Calls timeit with the number of loops so that total time >= max_time,
-        by default 5 seconds. max_time does nothing when number is provided
-
+        How many times to execute stmt. If number is not provided, number is
+        determined so as to get sufficient accuracy.
+    precision : int, optional
+        use a precision of <P> digits to display the timing result, by
+        default 3.
+    quiet : bool, optional
+        Do not print result if True, by default False.
     Returns
     -------
-    float
-        Total time taken in seconds.
+    TimeitResult
+        Returns a TimeitResult that can be stored in a variable to inspect the
+        result in more details.
     """
     def timed(*args, **kwargs):
         nonlocal func
-        runtime = timeit('func(*args, **kwargs)',
-                         repeat, number, max_time,
-                         globals=locals(),
-                         )
-        return runtime
+        timeit_result = timeit('func(*args, **kwargs)', ns=locals(), repeat=repeat,
+                               number=number, precision=precision, quiet=quiet)
+        return timeit_result
     return timed
 
 
-def timeit(stmt="pass", repeat=7, number=None, max_time=5, **kwargs):
+def timeit(stmt, ns={}, repeat=7, number=None, precision=3,
+           quiet=False):
     """Times a function and prints the output like '%timeit' in iPython.
+
+    Time execution of a Python statement or expression using the %timeit
+    or %%timeit magic command. This function can be used both as a single
+    line and multi line timer:
+
+    - In single line mode you can time a single-line statement (though
+    multiple ones can be chained with using semicolons).
+
+    - In multi line mode, the statement in the first line is used as setup
+    code (executed but not timed) and the body of the cell is timed. The
+    cell body has access to any variables created in the setup code.
 
     Parameters
     ----------
     stmt : str
         The code you want to time.
+    ns : dict, optional
+        Specifies a namespace in which to execute the code.
     repeat : int, optional
-        How many times to repeat the timer, by default 7
+        Number of repeats, each consisting of 'number' loops, and take the
+        best result.
     number : int, optional
-        How many times to execute stmt, by default None
-    max_time : int, optional
-        Calls timeit with the number of loops so that total time >= max_time,
-        by default 5 seconds. max_time does nothing when number is provided
-    **kwargs : optional
-        Keyword arguments passed to timeit.Timer, for example 'setup' and
-        'globals'
+        How many times to execute stmt. If number is not provided, number is
+        determined so as to get sufficient accuracy.
+    precision : int, optional
+        use a precision of <P> digits to display the timing result, by
+        default 3.
+    quiet : bool, optional
+        Do not print result if True, by default False.
     Returns
     -------
-    float
-        Total time taken in seconds.
+    TimeitResult
+        Returns a TimeitResult that can be stored in a variable to inspect the
+        result in more details.
+
+    Notes
+    -----
+    It is advisable to pass stmt as a raw string if it contains strings with
+    newline characters. For example:
+
+    >>> tm.timeit("'This \n will \n fail \n to \n run'")
+    SyntaxError: EOL while scanning string literal (<unknown>, line 1
+
+    >>> tm.timeit(r"'This \n will \n run \n as \n expected'")
+    3.68 ns ± 0.049 ns per loop (mean ± std. dev. of 7 runs, 10000 loops each)
     """
-    time_taken, number = _timeit(stmt, repeat, number, max_time, **kwargs)
-    avg, std = _get_time_stats(time_taken, number)
-
-    avg, avg_unit = _format_unit(avg)
-    avg = _round_number(avg)
-    std, std_unit = _format_unit(std)
-    std = _round_number(std)
-
-    output = f"{avg} {avg_unit} ± {std} {std_unit} per loop " \
-             f"(mean ± std. dev. of {repeat} runs, {number} loops each)"
-    print(output)
-    return sum(time_taken)
-
-
-def _time(stmt, globals):
-    """Measures the cpu and wall time of a function.
-
-    Returns
-    -------
-    tuple
-        ('stmt' result, (cpu_user, cpu_sys, cpu_total, wall_time))
-    """
-    start_wall_time = perf_counter()
-    start_cpu_time = _clock()
-
-    result = exec(stmt, globals)
-
-    end_cpu_time = _clock()
-    end_wall_time = perf_counter()
-
-    cpu_user = (end_cpu_time[0] - start_cpu_time[0])
-    cpu_sys = (end_cpu_time[1] - start_cpu_time[1])
-    cpu_total = (cpu_sys + cpu_user)
-    wall_time = end_wall_time - start_wall_time
-
-    timings = (cpu_user, cpu_sys, cpu_total, wall_time)
-    return result, timings
-
-
-def _clock():
-    """Fetches CPU times in the format (time_user, time_sys)"""
-    if resource is not None and hasattr(resource, "getrusage"):
-        # Some systems (like windows) don't have getrusage
-        return resource.getrusage(resource.RUSAGE_SELF)[:2]
+    stmt = _parse_args(stmt, repeat, number, precision, quiet)
+    magics = _setup_shell(ns)
+    # stmt is cell code if it contains multiple lines (not
+    # including \n found in strings)
+    # TODO:len(stmt.splitlines()) > 1
+    is_cell_code = stmt.count('\n') > stmt.count(r'\n')
+    if is_cell_code:
+        # In cell mode, the statement in the first line is used as setup code
+        # executed but not timed.
+        setup = stmt.splitlines()[0]
+        stmt = stmt.replace(setup + '\n', '')
+        result = magics.timeit(line=setup, cell=stmt)
     else:
-        # Under windows, system CPU time can't be measured.
-        # This just returns perf_counter() and zero.
-        return (perf_counter(), 0.0)
+        result = magics.timeit(line=stmt)
+    return result
 
 
-def _timeit(stmt, repeat, number, max_time, **kwargs):
-    """Measures the running time of a function using timeit.repeat()."""
-    timer = Timer(stmt, **kwargs)
+def _setup_shell(ns):
+    ipshell = InteractiveShellEmbed()
+    ipshell.user_ns.update(ns)
+    magics = ExecutionMagics(ipshell)
+    return magics
+
+
+def _parse_args(stmt, repeat, number, precision, quiet):
+    """Parses function arguments into %timeit options"""
+    args = f'-o -p {precision} -r {repeat}'
     if number:
-        time_taken = timer.repeat(repeat, number)
-    else:
-        time_taken, number = _autorange(timer, max_time, repeat)
-    return time_taken, number
-
-
-def _autorange(timer, max_time, repeat):
-    """Return the number of loops and time taken so that total time >= max_time.
-
-    'number' is the number of loops in the seq 1, 2, 5, 10, 20, 50 ... which
-    is closest to having a total time taken >= max_time when running in
-    timer.repeat().
-
-    Returns
-    -------
-    tuple
-        (time_taken, number)
-    """
-    estimate = timer.repeat(repeat, 1)
-    number = max(round(max_time / sum(estimate)), 1)
-    if number > 1:
-        number = _find_number(number)
-        time_taken = timer.repeat(repeat, number)
-        return time_taken, number
-    else:
-        return estimate, number
-
-
-def _find_number(number):
-    """Finds the number of loops in the seq 1, 2, 5, 10, 20, 50 ... closest
-    to having a total time taken >= max_time when running in timer.repeat()
-    """
-    last_i = 1
-    for i in _sequence_generator():
-        if number < i:
-            return last_i
-        last_i = i
-
-
-def _sequence_generator():
-    """Generator yielding a sequence of 1, 2, 5, 10, 20, 50 ..."""
-    i = 1
-    while True:
-        for j in 1, 2, 5:
-            yield i * j
-        i *= 10
-
-
-def _get_time_stats(time_taken, number):
-    """Calculates the mean and st. deviation of the _timeit runs"""
-    avg = sum(time_taken) / (len(time_taken) * number)
-    try:
-        std = statistics.stdev(time_taken) / number
-    except statistics.StatisticsError:
-        std = 0
-    return avg, std
-
-
-def _format_unit(number):
-    """Decides time unit (either h, min, s, ms, µs or ns) and converts
-    'number' to that unit.
-    """
-    try:
-        num_zeros_after_decimal = -floor(log10(number))
-    except ValueError:
-        num_zeros_after_decimal = 0
-
-    if number > 3600:
-        unit = 'h'
-        number = number / 3600
-    elif number > 60:
-        unit = 'min'
-        number = number / 60
-    elif num_zeros_after_decimal <= 0 and number != 0:
-        unit = 's'
-    elif 0 < num_zeros_after_decimal <= 3:
-        number = number * 10**3
-        unit = 'ms'
-    elif 3 < num_zeros_after_decimal <= 6:
-        number = number * 10**6
-        unit = 'µs'
-    else:
-        number = number * 10**9
-        unit = 'ns'
-
-    return number, unit
-
-
-def _round_number(number):
-    """Rounds the number so its of proper length"""
-    try:
-        round_to = 3 - ceil(log10(number))
-    except ValueError:
-        round_to = 3
-
-    if round_to == 0:
-        number = round(number)
-    else:
-        number = round(number, round_to)
-    return number
+        args = args + f' -n {number}'
+    if quiet:
+        args = args + f' -q'
+    return f'{args} {stmt}'
