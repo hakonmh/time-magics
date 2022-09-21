@@ -37,12 +37,12 @@ def time(stmt, ns={}):
         anything.
     Notes
     -----
+    This function, unlike time_magics.timeit(), doesn't use the statement in
+    the first line as setup code when running multiple lines.
+
     It is advisable to pass stmt as a raw string if it contains strings with
     newline characters. For example:
 
-
-    This function, unlike time_magics.timeit(), doesn't use the statement in
-    the first line as setup code when running multiple lines.
     >>> tm.time("'This \n will \n fail \n to \n run'")
     SyntaxError: EOL while scanning string literal (<unknown>, line 1
 
@@ -130,6 +130,18 @@ def timeit(stmt, ns={}, repeat=7, number=None, precision=3,
 
     Notes
     -----
+    In multi line mode, the statement in the first line is used as setup
+    code (executed but not timed) and the body of the cell is timed. For example:
+
+    >>> tm.timeit('''time.sleep(1)
+    >>> pass''', ns={'time': time})
+    3.9 ns ± 0.0672 ns per loop (mean ± std. dev. of 7 runs, 100000000 loops each)
+
+    >>> tm.timeit('''
+    >>> time.sleep(1)
+    >>> pass''', ns={'time': time})
+    1 s ± 363 µs per loop (mean ± std. dev. of 7 runs, 1 loop each)
+
     It is advisable to pass stmt as a raw string if it contains strings with
     newline characters. For example:
 
@@ -141,10 +153,7 @@ def timeit(stmt, ns={}, repeat=7, number=None, precision=3,
     """
     stmt = _parse_args(stmt, repeat, number, precision, quiet)
     magics = _setup_shell(ns)
-    # stmt is cell code if it contains multiple lines (not
-    # including \n found in strings)
-    # TODO:len(stmt.splitlines()) > 1
-    is_cell_code = stmt.count('\n') > stmt.count(r'\n')
+    is_cell_code = len(stmt.splitlines()) > 1
     if is_cell_code:
         # In cell mode, the statement in the first line is used as setup code
         # executed but not timed.
