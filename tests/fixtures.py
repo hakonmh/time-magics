@@ -6,9 +6,10 @@ from IPython.terminal.embed import InteractiveShellEmbed
 from IPython.core.magics.execution import ExecutionMagics
 
 
-STMT1 = "sum(range(100))"
+STMT1 = "sum(sorted(random.sample(list(range(100000)), 100000)))"
 STMT2 = r"""pystring = 'hello\nworld'
 pystring.splitlines()
+time.sleep(0.1)
 """
 STMT3 = """time.sleep(0.1)
 random.seed(100)
