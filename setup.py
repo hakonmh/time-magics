@@ -7,16 +7,16 @@ with open(os.path.join(current_folder, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='timeit-magic',
-    version='0.2.1',
-    description='iPython %timeit magic command in normal Python files',
+    version='0.2.2',
+    description='[DEPRECEATED] iPython %timeit magic command in normal Python files',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url=r'https://github.com/hakonmh/timeit-magic',
+    url=r'https://github.com/hakonmh/time-magics/tree/timeit-magic-old',
     author='Håkon Magne Holmen',
     author_email='haakonholmen@hotmail.com',
     license='MIT',
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 7 - Inactive',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
@@ -27,5 +27,6 @@ setup(
         'Programming Language :: Python :: 3.11',
     ],
     python_requires='>=3.5',
+    install_requires=['time-magics'],
     py_modules=['timeit_magic'],
 )
