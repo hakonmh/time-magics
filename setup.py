@@ -6,12 +6,12 @@ with open(os.path.join(current_folder, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
-    name='timeit-magic',
-    version='0.2.1',
-    description='iPython %timeit magic command in normal Python files',
+    name='time-magics',
+    version='0.3.0',
+    description='iPython %time and %timeit magic command in normal Python files',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url=r'https://github.com/hakonmh/timeit-magic',
+    url=r'https://github.com/hakonmh/time-magics',
     author='Håkon Magne Holmen',
     author_email='haakonholmen@hotmail.com',
     license='MIT',
@@ -27,5 +27,5 @@ setup(
         'Programming Language :: Python :: 3.11',
     ],
     python_requires='>=3.5',
-    py_modules=['timeit_magic'],
+    py_modules=['time_magics'],
 )
