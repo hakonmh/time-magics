@@ -1,45 +1,129 @@
-# Timeit-magic
+# Time-magics
 
-iPython `%timeit` magic command in normal Python files.
+iPython `%time` and `%timeit` magic command in normal Python files.
 
 ```python
-from timeit_magic import timeit
+import time
+import time_magics as tm
 
+def foo(n):
+    time.sleep(0.1)
+    return sum(list(range(n)))
+
+tm.time("foo(1_000_000)", ns={"foo": foo})
+tm.timeit("foo(1_000_000)", ns={"foo": foo})
+
+>> CPU times: user 18.9 ms, sys: 23.8 ms, total: 42.7 ms
+Wall time: 143 ms
+138 ms ± 1.46 ms per loop (mean ± std. dev. of 7 runs, 10 loops each)
+```
+
+Time-magics allows you to time code in a `.py` file with the same output and behavior as the
+[`%timeit`](https://ipython.readthedocs.io/en/stable/interactive/magics.html#magic-timeit)
+and [`%time`](https://ipython.readthedocs.io/en/stable/interactive/magics.html#magic-time)
+command in iPython and Jupyter Notebook.
+
+It also provides the functions `time_` and `timeit_`, which allows you to time a function by
+decorating it:
+
+```python
+import time
+import time_magics as tm
+
+@tm.timeit_
 def foo(n):
     return sum(list(range(n)))
 
-timeit("foo(10_000)", globals=globals())
-timeit("foo(10_000_000)", number=10, repeat=1, globals=globals())
-timeit("foo(10_000_000)", max_time=20, globals=globals())
-
->> 99.9 µs ± 752 ns per loop (mean ± std. dev. of 7 runs, 20000 loops each)
-229 ms ± 0 ns per loop (mean ± std. dev. of 1 runs, 10 loops each)
-230 ms ± 2.33 ms per loop (mean ± std. dev. of 7 runs, 10 loops each)
-```
-
-Timeit-magic allows you to time code in a `.py` file with the same output and behavior as the [`%timeit`](https://docs.python.org/3/library/timeit.html) command in iPython and Jupyter Notebook.
-
-It also provides another function, `time_it`, which allows you to time a function by decorating it:
-
-```python
-from timeit_magic import time_it
-
-@time_it
-def foo(n):
+@tm.time_
+def bar(n):
+    time.sleep(0.5)
     return sum(list(range(n)))
 
-# Both time_it and timeit returns the total runtime in seconds
-total_time = foo(10_000)
-print(total_time)
+# Both timeit_ and timeit returns a TimeitResult object
+result = foo(10_000)
+print("timeit_ output:", result)
+print(result.best)
 
->> 101 µs ± 1.53 µs per loop (mean ± std. dev. of 7 runs, 20000 loops each)
-14.110744676014292
+# While time_ and time returns the timed statement return value (if any)
+value = bar(10_000)
+print("time_ output:", value)
+
+>> 97.6 µs ± 825 ns per loop (mean ± std. dev. of 7 runs, 10000 loops each)
+timeit_ output: <TimeitResult>
+9.643386240350083e-05
+
+CPU times: user 668 µs, sys: 2 µs, total: 670 µs
+Wall time: 501 ms
+time_ output: 49995000
 ```
 
-Both functions accepts the optional arguments `repeat` and `number`, which does the same as `-r` and `-n` in `%timeit`.
+It should be noted that `timeit()` and `timeit_()` returns a TimeitResult object, while
+`time()` and `time_()` returns the statement return value.
 
-For more usage information, see the function docstrings and the [`timeit` documentation](https://docs.python.org/3/library/timeit).
+For more usage information, consult the function docstrings.
 
 ## Installation
 
-Timeit-magic can be installed from [PyPI](https://pypi.org/project/timeit-magic/) by using `$ pip install timeit-magic`
+Time-magics is available on [PyPI](https://pypi.org/project/time-magics/):
+
+```console
+$ python -m pip install time-magics
+```
+
+## Usage
+
+The `ns` parameter specifies a namespace in which to execute the code:
+
+```python
+>>> import time
+>>> import time_magics as tm
+
+>>> tm.timeit("time.sleep(0.5)")
+NameError: name 'time' is not defined
+
+>>> tm.timeit("time.sleep(0.5)", ns={'time': time})
+501 ms ± 24.9 µs per loop (mean ± std. dev. of 7 runs, 1 loop each)
+```
+
+For multi-line statements `time()` and `timeit()` will run in cell mode (i.e. `%%time[it]`).
+There is a difference in behavior between the two functions in cell mode:
+
+```python
+import time
+import time_magics as tm
+
+stmt = """time.sleep(1)
+time.sleep(1)
+"""
+
+tm.timeit(stmt, ns={'time': time})
+tm.time(stmt, ns={'time': time})
+
+>> 1 s ± 233 µs per loop (mean ± std. dev. of 7 runs, 1 loop each)
+# Only the last time.sleep is timed
+CPU times: user 216 µs, sys: 15 µs, total: 231 µs
+Wall time: 2 s  # Both time.sleeps is timed
+```
+
+`timeit()` will run the first line as setup code (executed but not timed) and the body of the
+ cell is timed. `time()`, on the other hand, doesn't use the first line as setup code when
+ running multiple lines. The first line will therefore be timed as normal. Both functions
+ behavior reflects their magic command equivalents.
+
+You should pass `stmt` as a raw string if it contains strings with newline (`\n`) characters.
+If not, `stmt` may be incorrectly parsed. For example:
+
+```python
+>>> import time_magics as tm
+
+>>> tm.time("a = 'This \n will \n fail \n to \n run'")
+SyntaxError: EOL while scanning string literal (<unknown>, line 1
+
+>>> tm.time(r"a = 'This \n will \n run \n as \n expected'")
+CPU times: user 2 µs, sys: 0 ns, total: 2 µs
+Wall time: 1.91 µs
+
+>>> tm.time("a = 'This \\n will \\n also \\n run \\n as \\n expected'")
+CPU times: user 1 µs, sys: 0 ns, total: 1 µs
+Wall time: 2.15 µs
+```
