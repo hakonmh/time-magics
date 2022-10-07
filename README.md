@@ -41,16 +41,14 @@ def bar(n):
 
 # Both timeit_ and timeit returns a TimeitResult object
 result = foo(10_000)
-print("timeit_ output:", result)
-print(result.best)
+print("timeit_ output:", type(result), result.best)
 
 # While time_ and time returns the timed statement return value (if any)
 value = bar(10_000)
 print("time_ output:", value)
 
 >> 97.6 µs ± 825 ns per loop (mean ± std. dev. of 7 runs, 10000 loops each)
-timeit_ output: <TimeitResult>
-9.643386240350083e-05
+timeit_ output: <TimeitResult> 9.643386240350083e-05
 
 CPU times: user 668 µs, sys: 2 µs, total: 670 µs
 Wall time: 501 ms
@@ -85,8 +83,25 @@ NameError: name 'time' is not defined
 501 ms ± 24.9 µs per loop (mean ± std. dev. of 7 runs, 1 loop each)
 ```
 
-For multi-line statements `time()` and `timeit()` will run in cell mode (i.e. `%%time[it]`).
-There is a difference in behavior between the two functions in cell mode:
+`timeit()` and `timeit_()` has the two optional parameters `n` and `r` which does the same
+as in `%timeit`:
+- `n` - How many times to execute `stmt`. If `n` is not provided, it will determined so as
+ to get sufficient accuracy.
+- `r` - Number of repeats, each consisting of `n` loops, and take the best result.
+
+```python
+import time_magics as tm
+
+tm.timeit('sum(list(range(100)))')
+tm.timeit('sum(list(range(100)))', r=3, n=1000)
+
+>> 1.83 µs ± 17 ns per loop (mean ± std. dev. of 7 runs, 100,000 loops each)
+1.84 µs ± 14 ns per loop (mean ± std. dev. of 3 runs, 1,000 loops each)
+```
+
+For multi-line statements `time()` and `timeit()` will run in cell mode (i.e. `%%time[it]`
+instead of `%time[it]`). There is a subtle, but crucial difference in behavior between the
+ two functions in cell mode:
 
 ```python
 import time
