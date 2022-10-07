@@ -55,7 +55,7 @@ Wall time: 501 ms
 time_ output: 49995000
 ```
 
-It should be noted that `timeit()` and `timeit_()` returns a TimeitResult object, while
+It should be noted that `timeit()` and `timeit_()` returns a `TimeitResult` object, while
 `time()` and `time_()` returns the statement return value.
 
 For more usage information, consult the function docstrings.
@@ -99,9 +99,18 @@ tm.timeit('sum(list(range(100)))', r=3, n=1000)
 1.84 µs ± 14 ns per loop (mean ± std. dev. of 3 runs, 1,000 loops each)
 ```
 
+###  Pitfalls
+
 For multi-line statements `time()` and `timeit()` will run in cell mode (i.e. `%%time[it]`
 instead of `%time[it]`). There is a subtle, but crucial difference in behavior between the
  two functions in cell mode:
+
+- `timeit()` will run the first line in the statement string as setup code (executed but not
+timed) and the body of the cell is timed.
+- `time()`, on the other hand, doesn't use the first line as setup code when running multiple
+lines. The first line will therefore be timed as normal.
+
+Both functions behavior reflects their magic command equivalents.
 
 ```python
 import time
@@ -115,15 +124,10 @@ tm.timeit(stmt, ns={'time': time})
 tm.time(stmt, ns={'time': time})
 
 >> 1 s ± 233 µs per loop (mean ± std. dev. of 7 runs, 1 loop each)
-# Only the last time.sleep is timed
+# Only the last time.sleep is timed, the first line is used as setup
 CPU times: user 216 µs, sys: 15 µs, total: 231 µs
 Wall time: 2 s  # Both time.sleeps is timed
 ```
-
-`timeit()` will run the first line as setup code (executed but not timed) and the body of the
- cell is timed. `time()`, on the other hand, doesn't use the first line as setup code when
- running multiple lines. The first line will therefore be timed as normal. Both functions
- behavior reflects their magic command equivalents.
 
 You should pass `stmt` as a raw string if it contains strings with newline (`\n`) characters.
 If not, `stmt` may be incorrectly parsed. For example:
