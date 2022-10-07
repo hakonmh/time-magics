@@ -55,7 +55,7 @@ def time(stmt, ns={}):
     return result
 
 
-def timeit_(func, repeat=7, number=None, precision=3, quiet=False):
+def timeit_(func, r=7, n=None, precision=3, quiet=False):
     """A decorator version of time_magics.timeit().
 
     Use this as a decorator to time a function and print the output
@@ -65,11 +65,11 @@ def timeit_(func, repeat=7, number=None, precision=3, quiet=False):
     ----------
     stmt : str
         The code you want to time.
-    repeat : int, optional
-        Number of repeats, each consisting of 'number' loops, and take the
+    r : int, optional
+        Number of repeats, each consisting of 'n' loops, and take the
         best result.
-    number : int, optional
-        How many times to execute stmt. If number is not provided, number is
+    n : int, optional
+        How many times to execute stmt. If n is not provided, it will
         determined so as to get sufficient accuracy.
     precision : int, optional
         use a precision of <P> digits to display the timing result, by
@@ -84,13 +84,13 @@ def timeit_(func, repeat=7, number=None, precision=3, quiet=False):
     """
     def timed(*args, **kwargs):
         nonlocal func
-        timeit_result = timeit('func(*args, **kwargs)', ns=locals(), repeat=repeat,
-                               number=number, precision=precision, quiet=quiet)
+        timeit_result = timeit('func(*args, **kwargs)', ns=locals(), r=r,
+                               n=n, precision=precision, quiet=quiet)
         return timeit_result
     return timed
 
 
-def timeit(stmt, ns={}, repeat=7, number=None, precision=3,
+def timeit(stmt, ns={}, r=7, n=None, precision=3,
            quiet=False):
     """Times a function and prints the output like '%timeit' in iPython.
 
@@ -111,11 +111,11 @@ def timeit(stmt, ns={}, repeat=7, number=None, precision=3,
         The code you want to time.
     ns : dict, optional
         Specifies a namespace in which to execute the code.
-    repeat : int, optional
-        Number of repeats, each consisting of 'number' loops, and take the
+    r : int, optional
+        Number of repeats, each consisting of 'n' loops, and take the
         best result.
-    number : int, optional
-        How many times to execute stmt. If number is not provided, number is
+    n : int, optional
+        How many times to execute stmt. If n is not provided, it will
         determined so as to get sufficient accuracy.
     precision : int, optional
         use a precision of <P> digits to display the timing result, by
@@ -151,7 +151,7 @@ def timeit(stmt, ns={}, repeat=7, number=None, precision=3,
     >>> tm.timeit(r"'This \n will \n run \n as \n expected'")
     3.68 ns ± 0.049 ns per loop (mean ± std. dev. of 7 runs, 10000 loops each)
     """
-    stmt = _parse_args(stmt, repeat, number, precision, quiet)
+    stmt = _parse_args(stmt, r, n, precision, quiet)
     magics = _setup_shell(ns)
     is_cell_code = len(stmt.splitlines()) > 1
     if is_cell_code:
@@ -172,11 +172,11 @@ def _setup_shell(ns):
     return magics
 
 
-def _parse_args(stmt, repeat, number, precision, quiet):
+def _parse_args(stmt, r, n, precision, quiet):
     """Parses function arguments into %timeit options"""
-    args = f'-o -p {precision} -r {repeat}'
-    if number:
-        args = args + f' -n {number}'
+    args = f'-o -p {precision} -r {r}'
+    if n:
+        args = args + f' -n {n}'
     if quiet:
         args = args + f' -q'
     return f'{args} {stmt}'
