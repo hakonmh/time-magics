@@ -105,8 +105,8 @@ For multi-line statements `time()` and `timeit()` will run in cell mode (i.e. `%
 instead of `%time[it]`). There is a subtle, but crucial difference in behavior between the
  two functions in cell mode:
 
-- `timeit()` will run the first line in the statement string as setup code (executed but not
-timed) and the body of the cell is timed.
+- `timeit()` will run the first line in the statement string as setup code and is executed, but not
+timed. All lines after the setup line are considered the body of the cell and are timed.
 - `time()`, on the other hand, doesn't use the first line as setup code when running multiple
 lines. The first line will therefore be timed as normal.
 
