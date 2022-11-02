@@ -52,6 +52,7 @@ def time(stmt, ns={}):
     """
     magics = _setup_shell(ns)
     result = magics.time(cell=stmt)
+    _disband_shell(magics)
     return result
 
 
@@ -162,6 +163,7 @@ def timeit(stmt, ns={}, r=7, n=None, precision=3,
         result = magics.timeit(line=setup, cell=stmt)
     else:
         result = magics.timeit(line=stmt)
+    _disband_shell(magics)
     return result
 
 
@@ -170,6 +172,11 @@ def _setup_shell(ns):
     ipshell.user_ns.update(ns)
     magics = ExecutionMagics(ipshell)
     return magics
+
+
+def _disband_shell(magics):
+    magics.shell.history_manager.end_session()
+    magics.shell._atexit_once_called = True
 
 
 def _parse_args(stmt, r, n, precision, quiet):
