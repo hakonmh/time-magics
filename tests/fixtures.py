@@ -1,5 +1,4 @@
 import time
-import random
 import bcrypt
 
 from IPython.terminal.embed import InteractiveShellEmbed
