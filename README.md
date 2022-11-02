@@ -65,7 +65,7 @@ For more usage information, consult the function docstrings.
 Time-magics is available on [PyPI](https://pypi.org/project/time-magics/):
 
 ```console
-$ python -m pip install time-magics
+python -m pip install time-magics
 ```
 
 ## Usage
@@ -85,6 +85,7 @@ NameError: name 'time' is not defined
 
 `timeit()` and `timeit_()` has the two optional parameters `n` and `r` which does the same
 as in `%timeit`:
+
 - `n` - How many times to execute `stmt`. If `n` is not provided, it will determined so as
  to get sufficient accuracy.
 - `r` - Number of repeats, each consisting of `n` loops, and take the best result.
@@ -99,7 +100,7 @@ tm.timeit('sum(list(range(100)))', r=3, n=1000)
 1.84 µs ± 14 ns per loop (mean ± std. dev. of 3 runs, 1,000 loops each)
 ```
 
-###  Pitfalls
+### Pitfalls
 
 For multi-line statements `time()` and `timeit()` will run in cell mode (i.e. `%%time[it]`
 instead of `%time[it]`). There is a subtle, but crucial difference in behavior between the
