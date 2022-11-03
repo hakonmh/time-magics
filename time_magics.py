@@ -1,6 +1,5 @@
 import ast
 import sys
-import copy
 from timeit import Timer
 from time import time as _time_wall
 from IPython.utils.timing import clock2 as _time_cpu
