@@ -7,7 +7,7 @@ KWARGS = [(3, 3, 4, False), (1, 1, 3, True)]
 
 
 @pytest.mark.parametrize(
-    ['stmt', 'mode'], ARGS)
+    ['stmt', 'mode'], ARGS, ids=["STMT1", "STMT2", "STMT3", "STMT4"])
 @pytest.mark.parametrize(
     ['r', 'n', 'precision', 'quiet'], KWARGS)
 def test_timeit(stmt, mode, r, n, precision, quiet):
@@ -40,7 +40,7 @@ def _parse_args(stmt, r, n, precision, quiet):
     if n:
         args = args + f' -n {n}'
     if quiet:
-        args = args + f' -q'
+        args = args + ' -q'
     return f'{args} {stmt}'
 
 

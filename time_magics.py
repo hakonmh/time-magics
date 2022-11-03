@@ -1,5 +1,7 @@
 from IPython.terminal.embed import InteractiveShellEmbed
 from IPython.core.magics.execution import ExecutionMagics
+from IPython.core.magics.execution import TimeitResult
+from timeit import Timer
 
 
 def time_(func):
@@ -56,6 +58,18 @@ def time(stmt, ns={}):
     return result
 
 
+def _setup_shell(ns):
+    ipshell = InteractiveShellEmbed()
+    ipshell.user_ns.update(ns)
+    magics = ExecutionMagics(ipshell)
+    return magics
+
+
+def _disband_shell(magics):
+    magics.shell.history_manager.end_session()
+    magics.shell._atexit_once_called = True
+
+
 def timeit_(func, r=7, n=None, precision=3, quiet=False):
     """A decorator version of time_magics.timeit().
 
@@ -85,9 +99,9 @@ def timeit_(func, r=7, n=None, precision=3, quiet=False):
     """
     def timed(*args, **kwargs):
         nonlocal func
-        timeit_result = timeit('func(*args, **kwargs)', ns=locals(), r=r,
-                               n=n, precision=precision, quiet=quiet)
-        return timeit_result
+        result = timeit('func(*args, **kwargs)', ns=locals(), r=r, n=n,
+                        precision=precision, quiet=quiet)
+        return result
     return timed
 
 
@@ -152,38 +166,44 @@ def timeit(stmt, ns={}, r=7, n=None, precision=3,
     >>> tm.timeit(r"'This \n will \n run \n as \n expected'")
     3.68 ns ± 0.049 ns per loop (mean ± std. dev. of 7 runs, 10000 loops each)
     """
-    stmt = _parse_args(stmt, r, n, precision, quiet)
-    magics = _setup_shell(ns)
+    setup, stmt = _format_stmt(stmt)
+    timer = Timer(stmt, setup=setup, globals=ns)
+    if not n:
+        n = timer.autorange()[0]
+
+    result = __timeit(timer, r, n, precision)
+    if not quiet:
+        __print_timeit_result(result)
+    return result
+
+
+def _format_stmt(stmt):
     is_cell_code = len(stmt.splitlines()) > 1
     if is_cell_code:
         # In cell mode, the statement in the first line is used as setup code
         # executed but not timed.
         setup = stmt.splitlines()[0]
-        stmt = stmt.replace(setup + '\n', '')
-        result = magics.timeit(line=setup, cell=stmt)
+        if setup != '':
+            stmt = stmt.replace(setup + '\n', '')
     else:
-        result = magics.timeit(line=stmt)
-    _disband_shell(magics)
+        setup = ''
+    return setup, stmt
+
+
+def __timeit(timer, r, n, precision):
+    all_runs = timer.repeat(r, n)
+    best = min(all_runs) / n
+    worst = max(all_runs) / n
+    result = TimeitResult(n, r, best, worst, all_runs,
+                          compile_time=0, precision=precision)
     return result
 
 
-def _setup_shell(ns):
-    ipshell = InteractiveShellEmbed()
-    ipshell.user_ns.update(ns)
-    magics = ExecutionMagics(ipshell)
-    return magics
-
-
-def _disband_shell(magics):
-    magics.shell.history_manager.end_session()
-    magics.shell._atexit_once_called = True
-
-
-def _parse_args(stmt, r, n, precision, quiet):
-    """Parses function arguments into %timeit options"""
-    args = f'-o -p {precision} -r {r}'
-    if n:
-        args = args + f' -n {n}'
-    if quiet:
-        args = args + f' -q'
-    return f'{args} {stmt}'
+def __print_timeit_result(result):
+    worst = result.worst
+    best = result.best
+    if worst > 4 * best and best > 0 and worst > 1e-6:
+        x = round(worst / best, 2)
+        print(f"The slowest run took {x} times longer than the fastest. This"
+              "could mean that an intermediate result is being cached.")
+    print(result)

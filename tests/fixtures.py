@@ -1,10 +1,11 @@
 import time
 import bcrypt
+import random
 
 from IPython.terminal.embed import InteractiveShellEmbed
 from IPython.core.magics.execution import ExecutionMagics
 
-
+random = random  # Remove flake8 warning
 STMT1 = "sum(sorted(random.sample(list(range(100000)), 100000)))"
 STMT2 = r"""pystring = 'hello\nworld'
 pystring.splitlines()

@@ -6,7 +6,7 @@ ARGS = [(STMT1, 'line'), (STMT2, 'cell'), (STMT3, 'cell')]
 
 
 @pytest.mark.parametrize(
-    ['stmt', 'mode'], ARGS)
+    ['stmt', 'mode'], ARGS, ids=["STMT1", "STMT2", "STMT3"])
 def test_time(stmt, mode):
     """Tests tm.time() against the %time magic command"""
     # Setup
