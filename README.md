@@ -137,7 +137,7 @@ If not, `stmt` may be incorrectly parsed. For example:
 >>> import time_magics as tm
 
 >>> tm.time("a = 'This \n will \n fail \n to \n run'")
-SyntaxError: EOL while scanning string literal (<unknown>, line 1
+SyntaxError: unterminated string literal (detected at line 1)
 
 >>> tm.time(r"a = 'This \n will \n run \n as \n expected'")
 CPU times: user 2 µs, sys: 0 ns, total: 2 µs

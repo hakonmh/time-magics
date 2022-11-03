@@ -1,7 +1,10 @@
-from IPython.terminal.embed import InteractiveShellEmbed
-from IPython.core.magics.execution import ExecutionMagics
-from IPython.core.magics.execution import TimeitResult
+import ast
+import sys
+import copy
 from timeit import Timer
+from time import time as _time_wall
+from IPython.utils.timing import clock2 as _time_cpu
+from IPython.core.magics.execution import TimeitResult, _format_time
 
 
 def time_(func):
@@ -46,28 +49,68 @@ def time(stmt, ns={}):
     newline characters. For example:
 
     >>> tm.time("'This \n will \n fail \n to \n run'")
-    SyntaxError: EOL while scanning string literal (<unknown>, line 1
+    SyntaxError: unterminated string literal (detected at line 1)
 
     >>> tm.time(r"'This \n will \n run \n as \n expected'")
     CPU times: user 2 µs, sys: 0 ns, total: 2 µs
     Wall time: 1.91 µs
     """
-    magics = _setup_shell(ns)
-    result = magics.time(cell=stmt)
-    _disband_shell(magics)
+    exec_stmt, eval_stmt = _compile_time_stmt(stmt)
+    result, timings = __time(exec_stmt, eval_stmt, ns)
+    _print_time_result(timings)
     return result
 
 
-def _setup_shell(ns):
-    ipshell = InteractiveShellEmbed()
-    ipshell.user_ns.update(ns)
-    magics = ExecutionMagics(ipshell)
-    return magics
+def __time(exec_stmt, eval_stmt, ns):
+    wall_start = _time_wall()
+    cpu_start = _time_cpu()
+
+    exec(exec_stmt, ns)
+    result = eval(eval_stmt, ns)
+
+    cpu_end = _time_cpu()
+    wall_end = _time_wall()
+
+    # Compute actual times and report
+    wall_time = wall_end - wall_start
+    cpu_user = cpu_end[0] - cpu_start[0]
+    cpu_sys = cpu_end[1] - cpu_start[1]
+    cpu_total = cpu_user + cpu_sys
+    return result, (cpu_user, cpu_sys, cpu_total, wall_time)
 
 
-def _disband_shell(magics):
-    magics.shell.history_manager.end_session()
-    magics.shell._atexit_once_called = True
+def _compile_time_stmt(stmt):
+    code_ast = ast.parse(stmt)
+    last_ast = code_ast.body[-1]
+
+    if type(last_ast) == ast.Expr:
+        code_ast.body = code_ast.body[:-1]
+        exec_stmt = compile(code_ast, "<ast>", "exec")
+
+        last_ast = __convert_to_ast_expr(last_ast)
+        eval_stmt = compile(last_ast, "<ast>", "eval")
+    else:
+        exec_stmt = compile(code_ast, "<ast>", "exec")
+        eval_stmt = compile("None", "", "eval")
+    return exec_stmt, eval_stmt
+
+
+def __convert_to_ast_expr(stmt):
+    stmt.lineno = 0
+    stmt.col_offset = 0
+    result = ast.Expression(stmt.value, lineno=0, col_offset=0)
+    return result
+
+
+def _print_time_result(result):
+    result = (_format_time(x) for x in result)
+    cpu_user, cpu_sys, cpu_total, wall_time = result
+    if sys.platform == "win32":
+        # On windows cpu_sys is always zero, so only total is displayed
+        print(f"CPU times: total: {cpu_total}")
+    else:
+        print(f"CPU times: user {cpu_user}, sys: {cpu_sys}, total: {cpu_total}")
+    print(f"Wall time: {wall_time}")
 
 
 def timeit_(func, r=7, n=None, precision=3, quiet=False):
@@ -166,18 +209,18 @@ def timeit(stmt, ns={}, r=7, n=None, precision=3,
     >>> tm.timeit(r"'This \n will \n run \n as \n expected'")
     3.68 ns ± 0.049 ns per loop (mean ± std. dev. of 7 runs, 10000 loops each)
     """
-    setup, stmt = _format_stmt(stmt)
+    setup, stmt = _format_timeit_stmt(stmt)
     timer = Timer(stmt, setup=setup, globals=ns)
     if not n:
         n = timer.autorange()[0]
 
     result = __timeit(timer, r, n, precision)
     if not quiet:
-        __print_timeit_result(result)
+        _print_timeit_result(result)
     return result
 
 
-def _format_stmt(stmt):
+def _format_timeit_stmt(stmt):
     is_cell_code = len(stmt.splitlines()) > 1
     if is_cell_code:
         # In cell mode, the statement in the first line is used as setup code
@@ -199,7 +242,7 @@ def __timeit(timer, r, n, precision):
     return result
 
 
-def __print_timeit_result(result):
+def _print_timeit_result(result):
     worst = result.worst
     best = result.best
     if worst > 4 * best and best > 0 and worst > 1e-6:
