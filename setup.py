@@ -7,7 +7,7 @@ with open(os.path.join(current_folder, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='time-magics',
-    version='0.5.0',
+    version='0.5.1',
     description='iPython %time and %timeit magic command in normal Python files',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -27,5 +27,8 @@ setup(
         'Programming Language :: Python :: 3.11',
     ],
     python_requires='>=3.5',
+    install_requires=[
+        'ipython',
+    ],
     py_modules=['time_magics'],
 )
