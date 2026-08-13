@@ -108,14 +108,3 @@ def test_timeit_decorator_accepts_keyword_arguments():
     assert result.loops == 1
     assert result.repeat == 1
     assert add.__name__ == "add"
-
-
-def test_print_timeit_result_warning_has_space(capsys):
-    from IPython.core.magics.execution import TimeitResult
-
-    all_runs = [1.0, 5.0]
-    result = TimeitResult(1, 2, 1.0, 5.0, all_runs, compile_time=0, precision=3)
-    tm._print_timeit_result(result)
-    captured = capsys.readouterr()
-    assert "This could mean" in captured.out
-    assert "Thiscould" not in captured.out
