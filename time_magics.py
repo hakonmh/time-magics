@@ -1,4 +1,5 @@
 import ast
+import functools
 import sys
 from timeit import Timer
 from time import time as _time_wall
@@ -17,15 +18,17 @@ def time_(func):
     obj
         Returns the func return value.
     """
+    @functools.wraps(func)
     def timed(*args, **kwargs):
-        nonlocal func
-        result = time('func(*args, **kwargs)', ns=locals())
-        return result
+        return time(
+            'func(*args, **kwargs)',
+            ns={'func': func, 'args': args, 'kwargs': kwargs},
+        )
 
     return timed
 
 
-def time(stmt, ns={}):
+def time(stmt, ns=None):
     """Times a function and prints the output like '%time' in iPython.
 
     Parameters
@@ -54,18 +57,26 @@ def time(stmt, ns={}):
     CPU times: user 2 µs, sys: 0 ns, total: 2 µs
     Wall time: 1.91 µs
     """
+    if ns is None:
+        ns = {}
     exec_stmt, eval_stmt = _compile_time_stmt(stmt)
-    result, timings = __time(exec_stmt, eval_stmt, ns)
+    result, timings, error = __time(exec_stmt, eval_stmt, ns)
     _print_time_result(timings)
+    if error is not None:
+        raise error
     return result
 
 
 def __time(exec_stmt, eval_stmt, ns):
     wall_start = _time_wall()
     cpu_start = _time_cpu()
-
-    exec(exec_stmt, ns)
-    result = eval(eval_stmt, ns)
+    result = None
+    error = None
+    try:
+        exec(exec_stmt, ns)
+        result = eval(eval_stmt, ns)
+    except Exception as exc:
+        error = exc
 
     cpu_end = _time_cpu()
     wall_end = _time_wall()
@@ -75,14 +86,19 @@ def __time(exec_stmt, eval_stmt, ns):
     cpu_user = cpu_end[0] - cpu_start[0]
     cpu_sys = cpu_end[1] - cpu_start[1]
     cpu_total = cpu_user + cpu_sys
-    return result, (cpu_user, cpu_sys, cpu_total, wall_time)
+    return result, (cpu_user, cpu_sys, cpu_total, wall_time), error
 
 
 def _compile_time_stmt(stmt):
     code_ast = ast.parse(stmt)
+    if not code_ast.body:
+        exec_stmt = compile(code_ast, "<ast>", "exec")
+        eval_stmt = compile("None", "", "eval")
+        return exec_stmt, eval_stmt
+
     last_ast = code_ast.body[-1]
 
-    if type(last_ast) == ast.Expr:
+    if isinstance(last_ast, ast.Expr):
         code_ast.body = code_ast.body[:-1]
         exec_stmt = compile(code_ast, "<ast>", "exec")
 
@@ -95,9 +111,8 @@ def _compile_time_stmt(stmt):
 
 
 def __convert_to_ast_expr(stmt):
-    stmt.lineno = 0
-    stmt.col_offset = 0
-    result = ast.Expression(stmt.value, lineno=0, col_offset=0)
+    result = ast.Expression(stmt.value)
+    ast.fix_missing_locations(result)
     return result
 
 
@@ -112,7 +127,7 @@ def _print_time_result(result):
     print(f"Wall time: {wall_time}")
 
 
-def timeit_(func, r=7, n=None, precision=3, quiet=False):
+def timeit_(func=None, r=7, n=None, precision=3, quiet=False):
     """A decorator version of time_magics.timeit().
 
     Use this as a decorator to time a function and print the output
@@ -120,13 +135,14 @@ def timeit_(func, r=7, n=None, precision=3, quiet=False):
 
     Parameters
     ----------
-    stmt : str
-        The code you want to time.
+    func : callable, optional
+        The function to decorate. When used as ``@timeit_(r=3)``, omit this
+        argument and pass timing options as keyword arguments.
     r : int, optional
         Number of repeats, each consisting of 'n' loops, and take the
         best result.
     n : int, optional
-        How many times to execute stmt. If n is not provided, it will
+        How many times to execute stmt. If n is not provided, it will be
         determined so as to get sufficient accuracy.
     precision : int, optional
         use a precision of <P> digits to display the timing result, by
@@ -139,15 +155,22 @@ def timeit_(func, r=7, n=None, precision=3, quiet=False):
         Returns a TimeitResult that can be stored in a variable to inspect the
         result in more details.
     """
-    def timed(*args, **kwargs):
-        nonlocal func
-        result = timeit('func(*args, **kwargs)', ns=locals(), r=r, n=n,
-                        precision=precision, quiet=quiet)
-        return result
-    return timed
+    def decorator(fn):
+        @functools.wraps(fn)
+        def timed(*args, **kwargs):
+            return timeit(
+                'func(*args, **kwargs)',
+                ns={'func': fn, 'args': args, 'kwargs': kwargs},
+                r=r, n=n, precision=precision, quiet=quiet,
+            )
+        return timed
+
+    if func is None:
+        return decorator
+    return decorator(func)
 
 
-def timeit(stmt, ns={}, r=7, n=None, precision=3,
+def timeit(stmt, ns=None, r=7, n=None, precision=3,
            quiet=False):
     """Times a function and prints the output like '%timeit' in iPython.
 
@@ -172,7 +195,7 @@ def timeit(stmt, ns={}, r=7, n=None, precision=3,
         Number of repeats, each consisting of 'n' loops, and take the
         best result.
     n : int, optional
-        How many times to execute stmt. If n is not provided, it will
+        How many times to execute stmt. If n is not provided, it will be
         determined so as to get sufficient accuracy.
     precision : int, optional
         use a precision of <P> digits to display the timing result, by
@@ -208,10 +231,12 @@ def timeit(stmt, ns={}, r=7, n=None, precision=3,
     >>> tm.timeit(r"'This \n will \n run \n as \n expected'")
     3.68 ns ± 0.049 ns per loop (mean ± std. dev. of 7 runs, 10000 loops each)
     """
+    if ns is None:
+        ns = {}
     setup, stmt = _format_timeit_stmt(stmt)
     timer = Timer(stmt, setup=setup, globals=ns)
     if not n:
-        n = timer.autorange()[0]
+        n = _autorange_number(timer)
 
     result = __timeit(timer, r, n, precision)
     if not quiet:
@@ -220,16 +245,28 @@ def timeit(stmt, ns={}, r=7, n=None, precision=3,
 
 
 def _format_timeit_stmt(stmt):
+    lines = stmt.splitlines(keepends=True)
     is_cell_code = len(stmt.splitlines()) > 1
     if is_cell_code:
         # In cell mode, the statement in the first line is used as setup code
         # executed but not timed.
-        setup = stmt.splitlines()[0]
+        setup = lines[0].rstrip('\r\n')
         if setup != '':
-            stmt = stmt.replace(setup + '\n', '')
+            stmt = ''.join(lines[1:])
     else:
         setup = ''
     return setup, stmt
+
+
+def _autorange_number(timer):
+    """Choose a loop count the same way IPython %timeit does (powers of 10)."""
+    number = 1
+    for index in range(0, 10):
+        number = 10 ** index
+        time_number = timer.timeit(number)
+        if time_number >= 0.2:
+            break
+    return number
 
 
 def __timeit(timer, r, n, precision):
@@ -246,6 +283,6 @@ def _print_timeit_result(result):
     best = result.best
     if worst > 4 * best and best > 0 and worst > 1e-6:
         x = round(worst / best, 2)
-        print(f"The slowest run took {x} times longer than the fastest. This"
+        print(f"The slowest run took {x} times longer than the fastest. This "
               "could mean that an intermediate result is being cached.")
     print(result)
